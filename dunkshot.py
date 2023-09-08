@@ -14,7 +14,6 @@ pygame.display.set_icon(icon)
 gray = (200, 200, 200)
 gravity = 0.5
 bounce_stop = 1
-mouse_trajectory = []
 friction = 0.02
 active_select = False
 immunity = 0
@@ -30,6 +29,8 @@ counter2 = 0
 multiplier = 1
 lives = 2
 newLife = False
+stuckCounter = 0
+buttonPressed = False
 
 def gameReset():
     global ball1
@@ -53,6 +54,7 @@ def gameReset():
     counter2 = 0
     multiplier = 1
     lives = 2
+    stuckCounter = 0
 
 class Ball:
     def __init__(self, x_pos, y_pos, mass, retention, y_speed, x_speed, radius):
@@ -138,6 +140,8 @@ class Ball:
         active_select = False
         self.selected = False
         self.active_shooter = True
+        if fullBasket(basket1, basket2) != False:
+            fullBasket(basket1, basket2).isFull == False
      
 class Basket():
     def __init__(self, x_pos, y_pos, isFull):
@@ -159,17 +163,35 @@ class Basket():
         self.rotate = pygame.transform.rotate(self.basket, 0)
         self.rotate_rect = self.rotate.get_rect(center = (self.x_pos, self.y_pos))
         self.isShooter = False
-        
+
     def shootingPos(self):
         if self.isFull == True:
             ball1.x_pos = self.x_pos 
             ball1.y_pos = self.y_pos
             ball1.x_speed = 0
-            ball1.y_speed = 0
+            ball1.y_speed = 0 
+        
+class Button():
+    def __init__(self, x, y, img):
+        self.img = img
+        self.rect = self.img.get_rect()
+        self.rect.topleft = (x, y)
+    
+    def drawButton(self):
+        screen.blit(self.img, (self.rect.x, self.rect.y)) 
+
+    def check_select(self, pos):
+        self.selected = False
+        if self.rect.collidepoint(pos):
+            self.selected = True
+        return self.selected
 
 ball1 = Ball(100, 360, 100, .7, 0, 0, 40)
 basket1 = Basket(100, 460, False)
 basket2 = Basket(300, 300, False)
+temp = pygame.image.load("Images/reload.png").convert_alpha()
+temp = pygame.transform.smoothscale(temp, (64, 64))
+restartButton = Button(208, 500, temp)
 
 def show_images():
     screen.blit(ball1.basketball, (ball1.x_pos - ball1.radius/2, ball1.y_pos - ball1.radius/2))
@@ -189,10 +211,10 @@ def show_images():
     if basket2.isShooter == False:
         temp = pygame.image.load("Images/hoop (1).png").convert_alpha()
         basket2.basket = pygame.transform.smoothscale(temp, (100, 64))
-    for i in range(lives + 1):
-        temp = pygame.image.load("Images/ball-of-basketball.png").convert_alpha()
-        temp = pygame.transform.smoothscale(temp, (25, 25))
-        screen.blit(temp, (30 + (i*40), 30))
+    font = pygame.font.SysFont("Railway", 40)
+    lives_string = "Lives: " + str(lives + 1)
+    img = font.render(lives_string, True, (169, 169, 169, 0.6))
+    screen.blit(img, (25, 25))
     #screen.blit(ball1.mask.to_surface(unsetcolor=(0,0,0,0), setcolor= (255,255,255,255)), (ball1.x_pos - ball1.radius/2, ball1.y_pos - ball1.radius/2))
     #screen.blit(basket1.netMask.to_surface(unsetcolor=(0,0,0,0), setcolor= (255,255,255,255)), (basket1.x_pos - 50, basket1.y_pos - 32))
     #screen.blit(basket1.rimLeftMask.to_surface(unsetcolor=(0,0,0,0), setcolor= (255,255,255,255)), (basket1.x_pos - 50, basket1.y_pos - 32))
@@ -210,6 +232,7 @@ def show_images():
 def check_event():
     global run
     global active_select
+    global buttonPressed
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
@@ -218,6 +241,8 @@ def check_event():
             if event.button == 1:
                 if ball1.check_select(event.pos):
                     active_select = True
+                if restartButton.check_select(event.pos):
+                    buttonPressed = True
         
         if event.type == pygame.MOUSEBUTTONUP:
             if event.button == 1:
@@ -227,6 +252,9 @@ def check_event():
                 basket1.rotate = pygame.transform.rotate(basket1.basket, 0)
                 basket2.rotate = pygame.transform.rotate(basket1.basket, 0)
                 active_select = False
+                if buttonPressed == True:
+                    buttonPressed = False
+                    gameReset()
 
 def calc_motion_vector(mouseX, mouseY, basket):
     x_speed = 0
@@ -408,7 +436,6 @@ def scroll_screen(basket1, basket2):
             full_basket.y_pos += 3
             still_scrolling = True
     if scored == True and canScore == False and still_scrolling == False:
-        print("yiggie")
         scored = False
         newBasket(emptyBasket(basket1, basket2))
 
@@ -417,6 +444,7 @@ def newBasket(basket):
     basket.x_pos = randint(100, SCREEN_WIDTH - 100)
             
 run = True
+
 while run == True:
     clock.tick(60)
     check_event()
@@ -427,8 +455,6 @@ while run == True:
     if basket1.isFull == False and basket2.isFull == False:
         if check_collision() == False:
             ball1.y_speed = ball1.check_gravity()
-        if len(mouse_trajectory) > 20:
-            mouse_trajectory.pop(0)
         ball1.update_pos(mouse_coords)
     elif basket1.isFull == True or basket2.isFull == True:
         if ball1.active_shooter == False:
@@ -445,8 +471,13 @@ while run == True:
             ball1.update_pos(mouse_coords)
             if check_still_in_basket() == False:
                 ball1.active_shooter = False
+    if fullBasket(basket1, basket2) == False:
+        stuckCounter += 0.1
+        if stuckCounter > 30:
+            restartButton.drawButton()
+    else:
+        stuckCounter = 0
     show_images()
     scroll_screen(basket1, basket2)
     pygame.display.flip()
-
 pygame.quit()
