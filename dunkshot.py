@@ -1,6 +1,5 @@
-import pygame
+import pygame, math, asyncio
 from random import randint
-import math
 
 pygame.init()
 
@@ -220,9 +219,11 @@ def show_images():
     #screen.blit(basket1.rimLeftMask.to_surface(unsetcolor=(0,0,0,0), setcolor= (255,255,255,255)), (basket1.x_pos - 50, basket1.y_pos - 32))
     #screen.blit(basket1.rimRightMask.to_surface(unsetcolor=(0,0,0,0), setcolor= (255,255,255,255)), (basket1.x_pos - 50, basket1.y_pos - 32))
     if basket1.isFull == True and active_select == True:
+        basket1.rotate_rect = basket1.rotate.get_rect(center = (basket1.x_pos, basket1.y_pos))
         screen.blit(basket1.rotate, (basket1.rotate_rect))
         screen.blit(basket2.basket, (basket2.x_pos - 50, basket2.y_pos - 32))
     elif basket2.isFull == True and active_select == True:
+        basket2.rotate_rect = basket2.rotate.get_rect(center = (basket2.x_pos, basket2.y_pos))
         screen.blit(basket1.basket, (basket1.x_pos - 50, basket1.y_pos - 32))
         screen.blit(basket2.rotate, (basket2.rotate_rect))
     else:
@@ -254,7 +255,17 @@ def check_event():
                 active_select = False
                 if buttonPressed == True:
                     buttonPressed = False
-                    gameReset()
+                    retry()
+
+def retry():
+    ball1.x_speed = 0
+    ball1.y_speed = 0
+    if basket1.isShooter == True:
+        ball1.x_pos = basket1.x_pos
+        ball1.y_pos = basket1.y_pos - 100
+    elif basket2.isShooter == True:
+        ball1.x_pos = basket2.x_pos
+        ball1.y_pos = basket2.y_pos - 100
 
 def calc_motion_vector(mouseX, mouseY, basket):
     x_speed = 0
@@ -438,46 +449,63 @@ def scroll_screen(basket1, basket2):
     if scored == True and canScore == False and still_scrolling == False:
         scored = False
         newBasket(emptyBasket(basket1, basket2))
+    
 
 def newBasket(basket):
-    basket.y_pos = randint(200, SCREEN_HEIGHT - 425)
+    basket.y_pos = randint(200, SCREEN_HEIGHT - 450)
     basket.x_pos = randint(100, SCREEN_WIDTH - 100)
             
 run = True
-
-while run == True:
-    clock.tick(60)
-    check_event()
-    screen.fill(gray)
-    mouse_coords = pygame.mouse.get_pos()
-    mouseX = mouse_coords[0]
-    mouseY = mouse_coords[1]
-    if basket1.isFull == False and basket2.isFull == False:
-        if check_collision() == False:
-            ball1.y_speed = ball1.check_gravity()
-        ball1.update_pos(mouse_coords)
-    elif basket1.isFull == True or basket2.isFull == True:
-        if ball1.active_shooter == False:
+async def main():
+    global run
+    global ball1
+    global basket1
+    global basket2
+    global score
+    global canScore
+    global scored
+    global counter
+    global counter2
+    global multiplier
+    global lives
+    global x_push
+    global y_push
+    global stuckCounter
+    while run == True:
+        clock.tick(60)
+        screen.fill(gray)
+        mouse_coords = pygame.mouse.get_pos()
+        mouseX = mouse_coords[0]
+        mouseY = mouse_coords[1]
+        if basket1.isFull == False and basket2.isFull == False:
+            if check_collision() == False:
+                ball1.y_speed = ball1.check_gravity()
             ball1.update_pos(mouse_coords)
-            if basket1.isFull == True:
-                basket1.shootingPos()
-                x_push, y_push = calc_motion_vector(mouseX, mouseY, basket1)
-            if basket2.isFull == True:
-                basket2.shootingPos()
-                x_push, y_push = calc_motion_vector(mouseX, mouseY, basket2)
+        elif basket1.isFull == True or basket2.isFull == True:
+            if ball1.active_shooter == False:
+                ball1.update_pos(mouse_coords)
+                if basket1.isFull == True:
+                    basket1.shootingPos()
+                    x_push, y_push = calc_motion_vector(mouseX, mouseY, basket1)
+                if basket2.isFull == True:
+                    basket2.shootingPos()
+                    x_push, y_push = calc_motion_vector(mouseX, mouseY, basket2)
+            else:
+                canScore = True
+                ball1.y_speed = ball1.check_gravity()
+                ball1.update_pos(mouse_coords)
+                if check_still_in_basket() == False:
+                    ball1.active_shooter = False
+        if fullBasket(basket1, basket2) == False:
+            stuckCounter += 0.1
+            if stuckCounter > 30:
+                restartButton.drawButton()
         else:
-            canScore = True
-            ball1.y_speed = ball1.check_gravity()
-            ball1.update_pos(mouse_coords)
-            if check_still_in_basket() == False:
-                ball1.active_shooter = False
-    if fullBasket(basket1, basket2) == False:
-        stuckCounter += 0.1
-        if stuckCounter > 30:
-            restartButton.drawButton()
-    else:
-        stuckCounter = 0
-    show_images()
-    scroll_screen(basket1, basket2)
-    pygame.display.flip()
-pygame.quit()
+            stuckCounter = 0
+        check_event()
+        scroll_screen(basket1, basket2)
+        show_images()
+        pygame.display.flip()
+        await asyncio.sleep(0)
+    pygame.quit()
+asyncio.run(main())
