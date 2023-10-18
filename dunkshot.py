@@ -240,19 +240,21 @@ def check_event():
         
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
-                if ball1.check_select(event.pos):
-                    active_select = True
+                if basket1.isFull == True or basket2.isFull == True:
+                    if ball1.check_select(event.pos):
+                        active_select = True
                 if restartButton.check_select(event.pos):
                     buttonPressed = True
         
         if event.type == pygame.MOUSEBUTTONUP:
             if event.button == 1:
-                if ball1.selected == True and (abs(x_push) > 3 or abs(y_push) > 3):
-                    ball1.shoot()
-                ball1.check_select((-1000, -1000))
-                basket1.rotate = pygame.transform.rotate(basket1.basket, 0)
-                basket2.rotate = pygame.transform.rotate(basket1.basket, 0)
-                active_select = False
+                if basket1.isFull == True or basket2.isFull == True:
+                    if ball1.selected == True and (abs(x_push) > 3 or abs(y_push) > 3):
+                        ball1.shoot()
+                    ball1.check_select((-1000, -1000))
+                    basket1.rotate = pygame.transform.rotate(basket1.basket, 0)
+                    basket2.rotate = pygame.transform.rotate(basket1.basket, 0)
+                    active_select = False
                 if buttonPressed == True:
                     buttonPressed = False
                     retry()
